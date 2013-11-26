@@ -27,25 +27,16 @@ class GoogleApi extends AppModel {
 		
 		$this->_config = Configure::read('Opauth.Strategy.'.$this->_strategy);
 		
-		if (!CakeSession::check($this->_strategy.'.auth')) {
-			// Need authentication
-			return false;
+		if (CakeSession::check($this->_strategy.'.auth')) {
+			
+			$auth = CakeSession::read($this->_strategy.'.auth');
+		
+			$this->_config['token'] = $auth['auth']['credentials']['token'];
+			$this->_config['refresh_token'] = $auth['auth']['credentials']['refresh_token'];
+			$this->_config['expires'] = $auth['auth']['credentials']['expires'];
+
 		}
 		
-		$auth = CakeSession::read($this->_strategy.'.auth');
-		
-		$this->_config['token'] = $auth['auth']['credentials']['token'];
-		$this->_config['refresh_token'] = $auth['auth']['credentials']['refresh_token'];
-		$this->_config['expires'] = $auth['auth']['credentials']['expires'];
-		
-		/*if (!CakeSession::check($this->_strategy)) {
-			$config = ClassRegistry::init('Opauth.OpauthSetting')
-				->findByName($this->_strategy);
-			if (!empty($config['OpauthSetting'])) {
-				CakeSession::write($this->_strategy, $config['OpauthSetting']);
-			}
-		}
-		$this->_config = CakeSession::read($this->_strategy);*/
 	}
 
 	protected function _generateCacheKey() {
@@ -70,6 +61,10 @@ class GoogleApi extends AppModel {
 	}
 
 	protected function _request($path, $request = array()) {
+		
+		if (empty($this->_config['token']))
+			return false;
+	
 		// preparing request
 		$request = Hash::merge($this->_request, $request);
 		$request['uri']['path'] .= $path;
@@ -148,13 +143,13 @@ class GoogleApi extends AppModel {
 		// issuing request
 		$response = $HttpSocket->request($request);
 
-		// olny valid response is going to be parsed
+		// only valid response is going to be parsed
 		if (substr($response->code, 0, 1) != 2) {
 			if (Configure::read('debugApis')) {
 				debug($request);
 				debug($response->body);
 			}
-			return false;
+			return 0;
 		}
 
 		// parsing response
