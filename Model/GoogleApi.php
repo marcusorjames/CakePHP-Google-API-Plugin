@@ -22,14 +22,30 @@ class GoogleApi extends AppModel {
 
 	public function __construct($id = false, $table = null, $ds = null) {
 		parent::__construct($id, $table, $ds);
-		if (!CakeSession::check($this->_strategy)) {
+		
+		// Read Google configuration from Opauth
+		
+		$this->_config = Configure::read('Opauth.Strategy.'.$this->_strategy);
+		
+		if (!CakeSession::check($this->_strategy.'.auth')) {
+			// Need authentication
+			return false;
+		}
+		
+		$auth = CakeSession::read($this->_strategy.'.auth');
+		
+		$this->_config['token'] = $auth['auth']['credentials']['token'];
+		$this->_config['refresh_token'] = $auth['auth']['credentials']['refresh_token'];
+		$this->_config['expires'] = $auth['auth']['credentials']['expires'];
+		
+		/*if (!CakeSession::check($this->_strategy)) {
 			$config = ClassRegistry::init('Opauth.OpauthSetting')
 				->findByName($this->_strategy);
 			if (!empty($config['OpauthSetting'])) {
 				CakeSession::write($this->_strategy, $config['OpauthSetting']);
 			}
 		}
-		$this->_config = CakeSession::read($this->_strategy);
+		$this->_config = CakeSession::read($this->_strategy);*/
 	}
 
 	protected function _generateCacheKey() {
@@ -149,5 +165,13 @@ class GoogleApi extends AppModel {
 			Cache::write($cacheKey, $results);
 		}
 		return $results;
+	}
+	
+	public function clearCredentials($credentials) {
+		CakeSession::delete($this->_strategy.'.auth');
+	}
+	
+	public function saveCredentials($credentials) {
+		CakeSession::write($this->_strategy.'.auth', $credentials);
 	}
 }
