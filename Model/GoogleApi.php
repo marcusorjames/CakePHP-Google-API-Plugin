@@ -31,9 +31,9 @@ class GoogleApi extends AppModel {
 			
 			$auth = CakeSession::read($this->_strategy.'.auth');
 		
-			$this->_config['token'] = $auth['token'];
-			$this->_config['refresh_token'] = $auth['refresh_token'];
-			$this->_config['expires'] = $auth['expires'];
+			$this->_config['token'] = isset($auth['token']) ? $auth['token'] : null;
+			$this->_config['refresh_token'] = isset($auth['refresh_token']) ? $auth['refresh_token'] : null;
+			$this->_config['expires'] = isset($auth['expires']) ? $auth['expires'] : null;
 
 		}
 	}
@@ -68,8 +68,10 @@ class GoogleApi extends AppModel {
 		$request = Hash::merge($this->_request, $request);
 		$request['uri']['path'] .= $path;
 		$request['header']['Authorization'] = sprintf('OAuth %s', $this->_config['token']);
+		
 		// Read cached GET results
-		if ($request['method'] == 'GET') {
+		// Do not read cache if debug is more than 1
+		if ($request['method'] == 'GET' && Configure::read('debug') >= 1) {
 			$cacheKey = $this->_generateCacheKey();
 			$results = Cache::read($cacheKey);
 			if ($results !== false) {
@@ -125,7 +127,46 @@ class GoogleApi extends AppModel {
 			// writing authorization token again (refreshed one)
 			$request['header']['Authorization'] = sprintf('OAuth %s', $this->_config['token']);
 		}
+		
+		
+		// Build query compatible
+		
+		if (!empty($request['uri']['query']['q']) && is_array($request['uri']['query']['q'])) {
+			
+			$filterQuery = array();
+			foreach ($request['uri']['query']['q'] as $filter => $filterValue) {
+			
+				if (is_array($filterValue)) {
+				
+					$filterValues = array();
+					foreach ($filterValue as $filterValueOption) {
 
+						$operator = "=";
+
+						if (preg_match("/(<=|<|=|>|>=|contains|in)/i", $filterValueOption))
+							$operator = "";
+							
+						if (preg_match("(title|fullText|mimeType)", $filter))
+							$filterValueOption = "'".$filterValueOption."'";
+
+						$filterValues[] = "$filter$operator$filterValueOption";
+					}
+					$filterQuery[] = implode(" and ", $filterValues);
+					
+				} else {
+					if ($filterValue === true)
+						$filterValue = 'true';
+					if ($filterValue === false)
+						$filterValue = 'false';
+					$filterQuery[] = "$filter=$filterValue";	
+				}
+				
+			}
+			$filterQuery = implode(" and ", $filterQuery);
+			
+			$request['uri']['query']['q'] = $filterQuery;
+		}
+		
 		// issuing request
 		$response = $HttpSocket->request($request);
 
@@ -137,7 +178,7 @@ class GoogleApi extends AppModel {
 			}
 			return 0;
 		}
-
+		
 		// parsing response
 		$results = $this->_parseResponse($response);
 
