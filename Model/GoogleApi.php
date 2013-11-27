@@ -31,12 +31,11 @@ class GoogleApi extends AppModel {
 			
 			$auth = CakeSession::read($this->_strategy.'.auth');
 		
-			$this->_config['token'] = $auth['auth']['credentials']['token'];
-			$this->_config['refresh_token'] = $auth['auth']['credentials']['refresh_token'];
-			$this->_config['expires'] = $auth['auth']['credentials']['expires'];
+			$this->_config['token'] = $auth['token'];
+			$this->_config['refresh_token'] = $auth['refresh_token'];
+			$this->_config['expires'] = $auth['expires'];
 
 		}
-		
 	}
 
 	protected function _generateCacheKey() {
@@ -120,21 +119,8 @@ class GoogleApi extends AppModel {
 			);
 
 			// saving new credentials
-			$this->_config = array_merge(
-				$this->_config,
-				$credentials
-			);
-			CakeSession::write(sprintf('%s', $this->_strategy), $this->_config);
-
-			// writing into db
-			$OpauthSetting = ClassRegistry::init('Opauth.OpauthSetting');
-			$data = $OpauthSetting->findByName($this->_strategy);
-			if ($data) {
-				$OpauthSetting->id = $data['OpauthSetting']['id'];
-				$OpauthSetting->save(array_merge(
-					$data['OpauthSetting'], $this->_config
-				));
-			}
+			
+			$this->saveCredentials($credentials);
 
 			// writing authorization token again (refreshed one)
 			$request['header']['Authorization'] = sprintf('OAuth %s', $this->_config['token']);
@@ -166,7 +152,17 @@ class GoogleApi extends AppModel {
 		CakeSession::delete($this->_strategy.'.auth');
 	}
 	
-	public function saveCredentials($credentials) {
+	public function saveCredentials($credentials = array()) {
+		
+		$filterCredentials = function($item) {
+			return in_array($item, array(
+				'token',
+				'expires',
+				'refresh_token'
+			));
+		};
+		$credentials = array_flip(array_filter(array_flip($credentials), $filterCredentials));
+		
 		CakeSession::write($this->_strategy.'.auth', $credentials);
 	}
 }
