@@ -63,7 +63,12 @@ class GoogleApi extends AppModel {
 		
 		if (empty($this->_config['token']))
 			return false;
-	
+			
+		$parseResponse = true;
+		if (isset($request['parseResponse']))
+			$parseResponse = $request['parseResponse'];
+		unset($request['parseResponse']);
+			
 		// preparing request
 		$request = Hash::merge($this->_request, $request);
 		$request['uri']['path'] .= $path;
@@ -71,14 +76,16 @@ class GoogleApi extends AppModel {
 		
 		// Read cached GET results
 		// Do not read cache if debug is more than 1
-		if ($request['method'] == 'GET' && Configure::read('debug') >= 1) {
+		if ($request['method'] == 'GET') {
 			$cacheKey = $this->_generateCacheKey();
-			$results = Cache::read($cacheKey);
-			if ($results !== false) {
-				return $results;
+			if (Configure::read('debug') <= 1) {
+				$results = Cache::read($cacheKey);
+				if ($results !== false) {
+					return $results;
+				}
 			}
 		}
-
+		
 		// createding http socket object for later use
 		$HttpSocket = new HttpSocket();
 
@@ -169,7 +176,7 @@ class GoogleApi extends AppModel {
 		
 		// issuing request
 		$response = $HttpSocket->request($request);
-
+		
 		// only valid response is going to be parsed
 		if (substr($response->code, 0, 1) != 2) {
 			if (Configure::read('debugApis')) {
@@ -180,7 +187,10 @@ class GoogleApi extends AppModel {
 		}
 		
 		// parsing response
-		$results = $this->_parseResponse($response);
+		if ($parseResponse)
+			$results = $this->_parseResponse($response);
+		else
+			$results = $response;
 
 		// cache and return results
 		if ($request['method'] == 'GET') {

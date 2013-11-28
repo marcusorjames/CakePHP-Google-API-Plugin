@@ -60,4 +60,20 @@ class GoogleDriveFiles extends GoogleApi {
 		}
 		return $this->_request(null, $request);
 	}
+	
+	public function downloadFile($id, $exportFormat = 'xlsx') {
+		$request = array();
+		$request['uri'] = array(
+			'scheme' => 'https',
+			'host' => 'docs.google.com',
+			'path' => '/feeds/download/spreadsheets/Export',
+			'query' => array(
+				'key' => $id,
+				'exportFormat' => $exportFormat
+			)
+		);
+		$request['redirect'] = true;
+		$request['parseResponse'] = false;
+		return $this->_request(null, $request);
+	}
 }
