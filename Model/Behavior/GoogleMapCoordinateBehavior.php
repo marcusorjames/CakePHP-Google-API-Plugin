@@ -5,7 +5,7 @@
  */
 class GoogleMapCoordinateBehavior extends ModelBehavior {
 	
-	public function setup($model, $settings = array()) {
+	public function setup(Model $model, $settings = array()) {
 		$settings = (array) $settings;
 		
 		$settings = am(array(
@@ -18,7 +18,7 @@ class GoogleMapCoordinateBehavior extends ModelBehavior {
 		$this->settings[$model->alias] = $settings;
 	}
 	
-	function beforeSave($model) {
+	public function beforeSave(Model $model, $options = array()) {
 				
 		$address = array($this->settings[$model->alias]['postfix']);
 		if (isset($this->settings[$model->alias]['addressField'])) {
@@ -27,10 +27,26 @@ class GoogleMapCoordinateBehavior extends ModelBehavior {
 		}
 		$address = implode(', ', $address);
 		
-		$outputLoc = @explode(',', file_get_contents('http://maps.google.com/maps/geo?q='.urlencode($address).'&output=csv&sensor=false'));
+		// Retrieve location information through Google Geocode service
 		
-		$model->data[$model->alias][$this->settings[$model->alias]['latitudeField']] = $outputLoc[2];
-		$model->data[$model->alias][$this->settings[$model->alias]['longitudeField']] = $outputLoc[3];
+		$GoogleGeocoding = ClassRegistry::init('Google.GoogleGeocoding');
+		
+		$outputGeocode = $GoogleGeocoding->get($address);
+		
+		if (!empty($outputGeocode) && $outputGeocode['status'] === 'OK') {
+			
+			$latitude = $outputGeocode['results'][0]['geometry']['location']['lat'];
+			$longitude = $outputGeocode['results'][0]['geometry']['location']['lng'];
+		
+		} else {
+		
+			$latitude = null;
+			$longitude = null;
+			
+		}
+		
+		$model->data[$model->alias][$this->settings[$model->alias]['latitudeField']] = $latitude;
+		$model->data[$model->alias][$this->settings[$model->alias]['longitudeField']] = $longitude;
 		
 		return true;
 	}

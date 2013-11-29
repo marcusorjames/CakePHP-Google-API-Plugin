@@ -17,9 +17,8 @@ class GoogleGeocoding extends GoogleMapsApi {
 			'address' => $address,
 			'sensor' => 'false'
 		);
-		if ($options) {
-			$query = array_merge($query, $options);
-		}
+		$query = array_merge($query, $options);
+		
 		$request['uri']['query'] = $query;
 		return $this->_request(null, $request);
 	}
