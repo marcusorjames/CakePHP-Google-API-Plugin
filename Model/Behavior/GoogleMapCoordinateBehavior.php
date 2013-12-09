@@ -19,12 +19,15 @@ class GoogleMapCoordinateBehavior extends ModelBehavior {
 	}
 	
 	public function beforeSave(Model $model, $options = array()) {
+		
+		if (!isset($this->settings[$model->alias]['addressField']) || !empty($this->settings[$model->alias]['addressField']))
+			return true;
 				
 		$address = array($this->settings[$model->alias]['postfix']);
-		if (isset($this->settings[$model->alias]['addressField'])) {
-			$address[] = str_replace(array("\r\n", "\r"), ', ', $model->data[$model->alias][$this->settings[$model->alias]['addressField']]);
-			$address = array_reverse(array_filter($address));
-		}
+		
+		$address[] = str_replace(array("\r\n", "\r"), ', ', $model->data[$model->alias][$this->settings[$model->alias]['addressField']]);
+		$address = array_reverse(array_filter($address));
+		
 		$address = implode(', ', $address);
 		
 		// Retrieve location information through Google Geocode service
